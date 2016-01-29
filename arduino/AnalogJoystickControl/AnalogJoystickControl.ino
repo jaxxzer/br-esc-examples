@@ -42,31 +42,38 @@ THE SOFTWARE.
 static const int JS_CENTER_0 = 511; // Analog reading at center, 0-1023
 static const int JS_CENTER_1 = 511;
 static const int JS_CENTER_2 = 511;
+static const int JS_CENTER_3 = 511;
 static const int JS_RANGE_0 = 128; // Analog range, 0-1023
 static const int JS_RANGE_1 = 128; // Set to 128 for Parallax joystick
 static const int JS_RANGE_2 = 128;
+static const int JS_RANGE_3 = 128;
 static const int JS_DIR_0 = 1; // +1 or -1
 static const int JS_DIR_1 = 1;
 static const int JS_DIR_2 = 1;
+static const int JS_DIR_3 = 1;
 
 // ESC/Thruster Settings
 static const int MAX_FWD_REV_THROTTLE = 400; // Value between 0-400
 static const int MAX_TURN_THROTTLE = 400; // Value between 0-400
 static const int MAX_VERTICAL_THROTTLE = 400; // Value between 0-400
+static const int MAX_STRAFE_THROTTLE = 400; // Value between 0-400
 static const int CENTER_THROTTLE = 1500;
 
 // Arduino Pins
 static const byte JS_ADC_0 = A0;
 static const byte JS_ADC_1 = A1;
 static const byte JS_ADC_2 = A2;
+static const byte JS_ADC_3 = A3;
 static const byte THRUSTER_LEFT = 9;
 static const byte THRUSTER_RIGHT = 10;
 static const byte THRUSTER_VERTICAL = 11;
+static const byte THRUSTER_STRAFE = 3;
 
 // Servos
 Servo thrusterLeft;
 Servo thrusterRight;
 Servo thrusterVertical;
+Servo thrusterStrafe;
 
 void setup() {
   // Set up serial port to print inputs and outputs
@@ -76,11 +83,13 @@ void setup() {
   thrusterLeft.attach(THRUSTER_LEFT);
   thrusterRight.attach(THRUSTER_RIGHT);
   thrusterVertical.attach(THRUSTER_VERTICAL);
+  thrusterStrafe.attach(THRUSTER_STRAFE);
 
   // Set output signal to 1500 microsecond pulse (stopped command)
   thrusterLeft.writeMicroseconds(CENTER_THROTTLE);
   thrusterRight.writeMicroseconds(CENTER_THROTTLE);
   thrusterVertical.writeMicroseconds(CENTER_THROTTLE);
+  thrusterStrafe.writeMicroseconds(CENTER_THROTTLE);
 
   // Delay to allow time for ESCs to initialize
   delay(1000); 
@@ -104,17 +113,25 @@ void loop() {
                               JS_CENTER_2+JS_DIR_2*JS_RANGE_2, // Joystick high value
                               -MAX_VERTICAL_THROTTLE, // Command low value
                               MAX_VERTICAL_THROTTLE); // Command high value
+  int strafeCommand   = map(analogRead(JS_ADC_3), // Read raw joystick value
+                              JS_CENTER_3-JS_DIR_3*JS_RANGE_3, // Joystick low value
+                              JS_CENTER_3+JS_DIR_3*JS_RANGE_3, // Joystick high value
+                              -MAX_STRAFE_THROTTLE, // Command low value
+                              MAX_STRAFE_THROTTLE); // Command high value
+
 
   // Combine the "stopped" command with forward, turn, and vertical and send 
   // to the ESCs.
   thrusterLeft.writeMicroseconds(CENTER_THROTTLE+forwardCommand+turnCommand);
   thrusterRight.writeMicroseconds(CENTER_THROTTLE+forwardCommand-turnCommand);
   thrusterVertical.writeMicroseconds(CENTER_THROTTLE+verticalCommand);
+  thrusterStrafe.writeMicroseconds(CENTER_THROTTLE+strafeCommand);
 
   // Output via serial
   Serial.print("Fwd: "); Serial.print(forwardCommand);
   Serial.print("Turn: "); Serial.print(turnCommand);
   Serial.print("Vert: "); Serial.print(verticalCommand);
+  Serial.print("Stf: "); Serial.print(strafeCommand);
   Serial.println("");
 
   // Delay 1/10th of a second. No need to update at super fast rates.
